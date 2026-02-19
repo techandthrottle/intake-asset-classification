@@ -33,13 +33,13 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.classifyAsset = exports.processGoogleDrive = void 0;
+exports.classifyAssetFinal = exports.processGoogleDrive = void 0;
 const dotenv = __importStar(require("dotenv"));
 if (process.env.NODE_ENV !== 'production' || !process.env.FIREBASE_CONFIG) {
     dotenv.config();
 }
 var processGoogleDrive_1 = require("./processGoogleDrive");
 Object.defineProperty(exports, "processGoogleDrive", { enumerable: true, get: function () { return processGoogleDrive_1.processGoogleDrive; } });
-var classifyAsset_1 = require("./classifyAsset");
-Object.defineProperty(exports, "classifyAsset", { enumerable: true, get: function () { return classifyAsset_1.classifyAsset; } });
+var classifyAssetFinal_1 = require("./classifyAssetFinal"); // Export the new classification worker
+Object.defineProperty(exports, "classifyAssetFinal", { enumerable: true, get: function () { return classifyAssetFinal_1.classifyAssetFinal; } });
 //# sourceMappingURL=index.js.map

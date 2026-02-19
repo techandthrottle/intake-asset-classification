@@ -4,6 +4,7 @@ import { isValidUrl } from '../lib/validations';
 import { isGoogleDriveUrl } from '../lib/utils';
 import { ResultsTable } from './ResultsTable';
 import { useClassificationQueue } from '../hooks/useClassificationQueue';
+// No longer directly importing ExtractedFile as it's handled by the queue hook
 
 export function URLInputForm() {
   const [url, setUrl] = useState('');
@@ -13,16 +14,17 @@ export function URLInputForm() {
   const [error, setError] = useState('');
   const [showResults, setShowResults] = useState(false);
 
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+  // Supabase keys are not directly used here now, but kept if needed elsewhere
+  // const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+  // const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
   const firebaseProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
   const firebaseRegion = import.meta.env.VITE_FIREBASE_REGION;
 
   const {
-    files: classifiedFiles,
+    queueItems, // Renamed from files to queueItems
     progress,
     startClassification,
-    retryFailed,
+    retryFailed, // Now returned by the hook again
     clearQueue,
   } = useClassificationQueue(firebaseProjectId, firebaseRegion);
 
@@ -64,35 +66,16 @@ export function URLInputForm() {
 
     setIsSubmitting(true);
     setError('');
-    setShowResults(false);
+    setShowResults(false); // Reset showResults before starting new classification
 
     try {
-      const apiUrl = `https://${firebaseRegion}-${firebaseProjectId}.cloudfunctions.net/processGoogleDrive`;
-      const response = await fetch(apiUrl, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ url: trimmedUrl }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Failed to extract files');
-      }
-
-      const extractedFiles = result.files || [];
-
-      if (extractedFiles.length > 0) {
-        startClassification(extractedFiles);
-      }
-
-      setShowResults(true);
-      setUrl('');
+      // The startClassification from useClassificationQueue now handles the backend call
+      await startClassification(trimmedUrl);
+      setShowResults(true); // Show results section after initiation
+      setUrl(''); // Clear URL input
       setValidationStatus('idle');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to process URL');
+      setError(err instanceof Error ? err.message : 'Failed to start classification process');
     } finally {
       setIsSubmitting(false);
     }
@@ -108,7 +91,7 @@ export function URLInputForm() {
       <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-4">
         <div className="space-y-2">
           <label htmlFor="url" className="block text-sm font-medium text-neutral-700 dark:text-neutral-300">
-            Website URL
+            Google Drive URL (Folder or File)
           </label>
           <div className="relative">
             <input
@@ -116,7 +99,7 @@ export function URLInputForm() {
               type="text"
               value={url}
               onChange={(e) => handleUrlChange(e.target.value)}
-              placeholder="https://example.com"
+              placeholder="https://drive.google.com/drive/folders/..."
               className="w-full px-4 py-3 pr-12 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-700 rounded-lg text-neutral-900 dark:text-neutral-50 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
               disabled={isSubmitting}
             />
@@ -131,7 +114,7 @@ export function URLInputForm() {
             </div>
           </div>
           <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Enter a valid URL starting with http:// or https://
+            Enter a valid Google Drive folder or file URL.
           </p>
         </div>
 
@@ -149,12 +132,12 @@ export function URLInputForm() {
           {isSubmitting ? (
             <>
               <Loader2 className="w-5 h-5 animate-spin" />
-              Extracting Files...
+              Processing Files...
             </>
           ) : (
             <>
               <Link2 className="w-5 h-5" />
-              Extract Files
+              Start Classification
             </>
           )}
         </button>
@@ -162,9 +145,9 @@ export function URLInputForm() {
 
       {showResults && (
         <ResultsTable
-          files={classifiedFiles}
+          queueItems={queueItems} // Changed from files to queueItems
           onClear={handleClearResults}
-          onRetryFailed={retryFailed}
+          onRetryFailed={retryFailed} // Re-added this prop
           classificationProgress={progress}
         />
       )}
