@@ -200,3 +200,49 @@ export async function classifySingleAsset(
     error: lastError || 'Classification failed after multiple retries',
   };
 }
+
+export interface DownloadPayload {
+  files: Array<{ id: string; name: string; mimeType: string }>;
+}
+
+/**
+ * Calls the `downloadZip` Firebase Function to download multiple files as a single ZIP archive.
+ */
+export async function downloadAsZip(
+  payload: DownloadPayload,
+  firebaseProjectId: string,
+  firebaseRegion: string
+): Promise<void> {
+  const emulatorUrl = import.meta.env.VITE_FIREBASE_FUNCTIONS_EMULATOR_URL;
+  let apiUrl: string;
+
+  if (emulatorUrl) {
+    apiUrl = `${emulatorUrl}/${firebaseProjectId}/${firebaseRegion}/downloadZip`;
+  } else {
+    apiUrl = `https://${firebaseRegion}-${firebaseProjectId}.cloudfunctions.net/downloadZip`;
+  }
+
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Failed to download ZIP: ${response.status} ${errorText}`);
+  }
+
+  // Handle the streamed response
+  const blob = await response.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  link.setAttribute('download', `gdrive_assets_${Date.now()}.zip`);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(downloadUrl);
+}

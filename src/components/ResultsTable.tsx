@@ -1,7 +1,8 @@
-import { Download, Image as ImageIcon, Video, FileX, Loader2, AlertTriangle, Info, FileSpreadsheet, XCircle, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Download, Image as ImageIcon, Video, FileX, Loader2, AlertTriangle, Info, FileSpreadsheet, XCircle, CheckCircle2, RefreshCw, FolderDown } from 'lucide-react';
 import { formatFileSize } from '../lib/utils';
 import { useState, useMemo } from 'react'; // Import useMemo
 import * as XLSX from 'xlsx';
+import { downloadAsZip } from '../lib/classifyAssets';
 
 // Define the interfaces here or import them from a shared types file
 interface ClassificationResult {
@@ -127,6 +128,38 @@ function DescriptionCell({ description, diagnostics, error }: { description?: st
 
 export function ResultsTable({ queueItems, onClear, onRetryFailed, classificationProgress }: ResultsTableProps) {
   const [selectedClassificationFilter, setSelectedClassificationFilter] = useState<string>('all');
+  const [isDownloading, setIsDownloading] = useState(false);
+
+  const firebaseProjectId = import.meta.env.VITE_FIREBASE_PROJECT_ID;
+  const firebaseRegion = import.meta.env.VITE_FIREBASE_REGION;
+
+  const handleDownloadAll = async () => {
+    if (filteredQueueItems.length === 0) return;
+
+    setIsDownloading(true);
+    try {
+      const payload = {
+        files: filteredQueueItems
+          .filter(item => item.id && item.id !== 'N/A')
+          .map(item => ({
+            id: item.id,
+            name: item.name || `file_${item.id}`,
+            mimeType: item.mimeType || 'application/octet-stream'
+          }))
+      };
+
+      if (payload.files.length === 0) {
+        throw new Error('No valid files to download');
+      }
+
+      await downloadAsZip(payload, firebaseProjectId, firebaseRegion);
+    } catch (err) {
+      console.error('Error downloading ZIP:', err);
+      alert('Failed to download ZIP: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsDownloading(false);
+    }
+  };
 
   const handleExportToExcel = () => {
     const worksheetData = queueItems.map(item => ({
@@ -136,7 +169,7 @@ export function ResultsTable({ queueItems, onClear, onRetryFailed, classificatio
       'File Size': item.size ? formatFileSize(parseInt(item.size)) : 'N/A',
       'Classification': item.classification || 'Not classified',
       'Description': item.description || 'No description',
-      'Generated Download Link': item.diagnostics?.gcsUri || '',
+      'Google Drive Link': `https://drive.google.com/open?id=${item.id}`,
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(worksheetData);
@@ -148,7 +181,7 @@ export function ResultsTable({ queueItems, onClear, onRetryFailed, classificatio
       { wch: 15 }, // File Size
       { wch: 20 }, // Classification
       { wch: 60 }, // Description
-      { wch: 40 }, // Generated Download Link
+      { wch: 40 }, // Google Drive Link
     ];
     worksheet['!cols'] = columnWidths;
 
@@ -236,6 +269,18 @@ export function ResultsTable({ queueItems, onClear, onRetryFailed, classificatio
               Retry {classificationProgress.failed} Failed
             </button>
           )}
+          <button
+            onClick={handleDownloadAll}
+            disabled={isDownloading || queueItems.length === 0}
+            className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 transition-colors border border-primary-600 dark:border-primary-400 rounded-lg hover:bg-primary-50 dark:hover:bg-primary-950 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isDownloading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FolderDown className="w-4 h-4" />
+            )}
+            Download All (ZIP)
+          </button>
           <button
             onClick={handleExportToExcel}
             className="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-medium text-success-600 dark:text-success-400 hover:text-success-700 dark:hover:text-success-300 transition-colors border border-success-600 dark:border-success-400 rounded-lg hover:bg-success-50 dark:hover:bg-success-950"
@@ -374,11 +419,11 @@ export function ResultsTable({ queueItems, onClear, onRetryFailed, classificatio
                     <DescriptionCell description={item.description} diagnostics={item.diagnostics} error={item.error} />
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-neutral-600 dark:text-neutral-400">
-                    {item.diagnostics?.gcsUri ? (
-                      <a href={item.diagnostics.gcsUri} target="_blank" rel="noopener noreferrer"
+                    {item.id ? (
+                      <a href={`https://drive.google.com/open?id=${item.id}`} target="_blank" rel="noopener noreferrer"
                         className="text-sm text-primary-600 dark:text-primary-400 hover:text-primary-700 dark:hover:text-primary-300 hover:underline truncate block max-w-xs"
-                        title={item.diagnostics.gcsUri}>
-                        GCS Link
+                        title={`https://drive.google.com/open?id=${item.id}`}>
+                        GDrive Link
                       </a>
                     ) : (
                       <span className="text-xs text-neutral-500">N/A</span>
