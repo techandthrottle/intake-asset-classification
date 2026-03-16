@@ -33,7 +33,7 @@ var __importStar = (this && this.__importStar) || (function () {
     };
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.classifyAssetFinal = exports.processGoogleDrive = void 0;
+exports.downloadSingleFile = exports.downloadZip = exports.listFolder = exports.classifyAssetFinal = exports.processGoogleDrive = void 0;
 const dotenv = __importStar(require("dotenv"));
 if (process.env.NODE_ENV !== 'production' || !process.env.FIREBASE_CONFIG) {
     dotenv.config();
@@ -42,4 +42,10 @@ var processGoogleDrive_1 = require("./processGoogleDrive");
 Object.defineProperty(exports, "processGoogleDrive", { enumerable: true, get: function () { return processGoogleDrive_1.processGoogleDrive; } });
 var classifyAssetFinal_1 = require("./classifyAssetFinal"); // Export the new classification worker
 Object.defineProperty(exports, "classifyAssetFinal", { enumerable: true, get: function () { return classifyAssetFinal_1.classifyAssetFinal; } });
+var listFolder_1 = require("./listFolder");
+Object.defineProperty(exports, "listFolder", { enumerable: true, get: function () { return listFolder_1.listFolder; } });
+var downloadZip_1 = require("./downloadZip");
+Object.defineProperty(exports, "downloadZip", { enumerable: true, get: function () { return downloadZip_1.downloadZip; } });
+var downloadSingleFile_1 = require("./downloadSingleFile");
+Object.defineProperty(exports, "downloadSingleFile", { enumerable: true, get: function () { return downloadSingleFile_1.downloadSingleFile; } });
 //# sourceMappingURL=index.js.map
